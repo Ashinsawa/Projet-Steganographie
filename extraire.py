@@ -31,4 +31,4 @@ def extraire_message(image_path):
     return "Aucun marqueur de fin trouvé."
 
 # Exemple d'utilisation :
-print(extraire_message("image_codee.png"))
+print(extraire_message("images/image1_codee_codee.png"))
