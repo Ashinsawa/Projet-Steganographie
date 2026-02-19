@@ -28,4 +28,4 @@ def cacher_message(image_path, message, output_path):
     print(f"Message caché dans {output_path}")
 
 # Exemple d'utilisation
-cacher_message("image_originale.png", "Secret MNS 2026", "image_codee.png")
+cacher_message("images/image1.png", "Mon message secret", "images/image1_codee.png")
