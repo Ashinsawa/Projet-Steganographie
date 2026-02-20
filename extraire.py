@@ -29,5 +29,6 @@ def extraire_message(image_path):
     
     return "Aucun marqueur de fin trouvé."
 
-# Exemple d'utilisation :
-print(extraire_message("images/image1_codee.png"))
+if __name__ == "__main__":
+    # Exemple d'utilisation (ne tourne que si on lance extraire.py directement)
+    print(extraire_message("images/image1_codee.png"))
