@@ -93,11 +93,12 @@ def action_extraire_message():
     
     try:
         msg = extraire_message(img_path)
+
         # Efface l'ancienne sortie puis écrit la nouvelle
-        text_resultat.delete("1.0, tk.END")
+        text_resultat.delete("1.0", tk.END) # 2 arguments séparés
         text_resultat.insert(tk.END, msg)
     except Exception as e:
-        messagebox.showerror("Erreur", f"Une erreur", f"Une erreur est survenue :\n{e}")
+        messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}") # 2 arguments
 
 
 # ----------------------------
