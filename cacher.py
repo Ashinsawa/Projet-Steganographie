@@ -8,7 +8,8 @@ def cacher_message(image_path, message, output_path):
     # On force l'image en RGBA pour être sûr d'avoir 4 valeurs (r,g,b,a)
     img = Image.open(image_path).convert("RGBA")
 
-    binary_msg = message_to_bin(message) + '1111111111111110' # Marqueur de fin
+    marqueur_fin = '1111111111111110' * 4 # 16*4 = 64 bits
+    binary_msg = message_to_bin(message) + marqueur_fin
     
     pixels = img.load()
     width, height = img.size

@@ -8,7 +8,7 @@ def extraire_message(image_path):
     
     bits_extraits = ""
     message_final = ""
-    marqueur_fin = '1111111111111110'
+    marqueur_fin = '1111111111111110' * 4 # doit être IDENTIQUE à cacher.py
     
     for y in range(height):
         for x in range(width):
