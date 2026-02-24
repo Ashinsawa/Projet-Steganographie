@@ -15,7 +15,7 @@ def image_diff(image1_path, image2_path, output_path):
     img2 = Image.open(image2_path).convert("RGBA")
 
     if img1.size != img2.size:
-        print("❌ Tailles différentes :", img1.size, "vs", img2.size)
+        print("Les images n'ont pas la même taille.")
         return False
 
     width, height = img1.size
@@ -25,13 +25,21 @@ def image_diff(image1_path, image2_path, output_path):
     diff_img = Image.new("RGBA", (width, height))
     pd = diff_img.load()
 
+    nb_diff = 0  # ✅ compteur
+
     for y in range(height):
         for x in range(width):
-            pd[x, y] = (255, 255, 255, 255) if p1[x, y] == p2[x, y] else (255, 0, 0, 255)
+            if p1[x, y] == p2[x, y]:
+                pd[x, y] = (255, 255, 255, 255)
+            else:
+                pd[x, y] = (255, 0, 0, 255)
+                nb_diff += 1  # ✅
 
     diff_img.save(output_path)
-    print(f"✅ Image diff créée : {output_path}")
+    print(f"Image diff créée : {output_path}")
+    print(f"✅ Pixels différents : {nb_diff} / {width*height}")  # ✅ preuve
     return True
+
 
 
 def visualiser_lsb_rouge(image_path, output_path):
