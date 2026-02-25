@@ -1,108 +1,158 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from PIL import Image
 
-# On réutilise les fonctions 
 from cacher import cacher_message
 from extraire import extraire_message
 
 # ----------------------------
 # Fenêtre principale
 # ----------------------------
-root = tk.Tk()# Crée la fenêtre
-root.title("Stéganographie - LSB (MNS)") # Titre de la fenêtre
-root.geometry("600x450") # Taille (largeur x hauteur)
+root = tk.Tk()
+root.title("Stéganographie - LSB (MNS)")
+root.geometry("700x520")
 
 # ----------------------------
-# Variable Tkinter (stockent du texte lié aux widgets)
+# Constantes "projet"
 # ----------------------------
-encode_image_path = tk.StringVar() # chemin image à encoder
-decode_image_path = tk.StringVar() # chemin image à décoder
+MARQUEUR_FIN = '1111111111111110' * 4  # 64 bits
+SEUIL_RATIO = 0.001  # 0.1% = 0.001 en valeur décimale
 
 # ----------------------------
-# Fonctions appelées par les boutons
+# Variables Tkinter
+# ----------------------------
+encode_image_path = tk.StringVar()
+decode_image_path = tk.StringVar()
+
+encode_seed = tk.StringVar()
+decode_seed = tk.StringVar()
+
+# ----------------------------
+# Helpers (calculs demandés en Q4)
+# ----------------------------
+def message_to_bin_len_bits(message: str) -> int:
+    """
+    Calcule le nombre de bits à stocker.
+    Hypothèse du prof : 8 bits par caractère + marqueur de fin.
+    """
+    return len(message) * 8 + len(MARQUEUR_FIN)
+
+def lire_taille_image(path: str):
+    """Retourne (width, height) ou (None, None) si problème."""
+    try:
+        img = Image.open(path)
+        return img.size  # (width, height)
+    except Exception:
+        return None, None
+
+def update_encode_infos(*args):
+    """
+    Met à jour les labels d'infos (taille image, bits, ratio)
+    dès qu'on change l'image ou le message.
+    """
+    path = encode_image_path.get()
+    msg = text_message.get("1.0", tk.END).strip()
+
+    if not path:
+        label_img_size_val.config(text="-")
+        label_bits_val.config(text="-")
+        label_ratio_val.config(text="-")
+        label_conclusion_val.config(text="-")
+        return
+
+    width, height = lire_taille_image(path)
+    if width is None:
+        label_img_size_val.config(text="Erreur lecture image")
+        label_bits_val.config(text="-")
+        label_ratio_val.config(text="-")
+        label_conclusion_val.config(text="-")
+        return
+
+    total_pixels = width * height
+    nb_bits = message_to_bin_len_bits(msg) if msg else len(MARQUEUR_FIN)  # si message vide: juste marqueur
+    ratio = nb_bits / total_pixels
+
+    label_img_size_val.config(text=f"{width} x {height} ({total_pixels} pixels)")
+    label_bits_val.config(text=f"{nb_bits} bits")
+    label_ratio_val.config(text=f"{ratio:.6f}  (≈ {ratio*100:.4f} %)")
+
+    if ratio < SEUIL_RATIO:
+        label_conclusion_val.config(text="✅ Ratio < 0,1% : le bruit naturel devrait masquer le message")
+    else:
+        label_conclusion_val.config(text="⚠️ Ratio ≥ 0,1% : le message peut être plus détectable")
+
+
+# ----------------------------
+# Actions boutons / sélection fichiers
 # ----------------------------
 def choisir_image_a_encoder():
-    """
-    Ouvre un explorateur de fichiers pour choisir une image.
-    Le chemin choisi est stocké dans encode_image_path.
-    """
     path = filedialog.askopenfilename(
         title="Choisir une image (PNG)",
-        filetypes=[("Images PNG", "*.png"), ("Toutes les images", "*.png;*.jpg;*.jpeg"), ("Tous les fichiers", "*.*")]
+        filetypes=[("Images PNG", "*.png"), ("Tous les fichiers", "*.*")]
     )
-    if path: # si l'utilisateur n'a pas annulé
+    if path:
         encode_image_path.set(path)
+        update_encode_infos()
 
 def choisir_image_a_decoder():
-    """
-    Même idée, mais pour décoder.
-    """
     path = filedialog.askopenfilename(
         title="Choisir une image à décoder (PNG)",
-        filetypes=[("Images PNG", "*.png"), ("Toutes les images", "*.png;*.jpg;*.jpeg"), ("Tous les fichiers", "*.*")]
+        filetypes=[("Images PNG", "*.png"), ("Tous les fichiers", "*.*")]
     )
-    if path: 
+    if path:
         decode_image_path.set(path)
 
 def action_cacher_message():
-    """
-    Récupère le chemin de l'image + le texte dans la zone,
-    puis demande où enregistrer la nouvelle image encodée.
-    """
     img_path = encode_image_path.get()
-
-    # Récupère le message tapé dans le widget Text (du début à la fin)
     msg = text_message.get("1.0", tk.END).strip()
+    seed = encode_seed.get().strip()
 
     if not img_path:
         messagebox.showwarning("Attention", "Choisis une image à encoder.")
         return
-    
     if not msg:
         messagebox.showwarning("Attention", "Tape un message à cacher.")
         return
-    
-    # Demande où sauvegarder l'image encodée
+    if not seed:
+        messagebox.showwarning("Attention", "Tape une graine (mot de passe).")
+        return
+
     output_path = filedialog.asksaveasfilename(
         title="Enregistrer l'image encodée",
         defaultextension=".png",
         filetypes=[("Images PNG", "*.png")],
         initialfile="image_codee.png"
     )
-
     if not output_path:
-        return # l'utilisateur a annulé
-    
+        return
+
     try:
-        cacher_message(img_path, msg, output_path)
+        cacher_message(img_path, msg, output_path, seed)
         messagebox.showinfo("OK", f"Message caché dans :\n{output_path}")
     except Exception as e:
         messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}")
-    
 
 def action_extraire_message():
-    """
-    Lit le chemin de l'image sélectionnée, extrait le message,
-    puis l'affiche dans la zone de résultat.
-    """
     img_path = decode_image_path.get()
+    seed = decode_seed.get().strip()
 
     if not img_path:
         messagebox.showwarning("Attention", "Choisis une image à décoder.")
         return
-    
-    try:
-        msg = extraire_message(img_path)
+    if not seed:
+        messagebox.showwarning("Attention", "Tape la graine (mot de passe).")
+        return
 
-        # Efface l'ancienne sortie puis écrit la nouvelle
-        text_resultat.delete("1.0", tk.END) # 2 arguments séparés
+    try:
+        msg = extraire_message(img_path, seed)
+        text_resultat.delete("1.0", tk.END)
         text_resultat.insert(tk.END, msg)
     except Exception as e:
-        messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}") # 2 arguments
+        messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}")
 
 
 # ----------------------------
-# Interface - Partie 3a : Encoder
+# UI - Partie Encode (Q3a + Q4)
 # ----------------------------
 label_a = tk.Label(root, text="Cacher un message dans une image", font=("Arial", 12, "bold"))
 label_a.pack(pady=(10, 5))
@@ -116,23 +166,48 @@ btn_choisir_encode.pack(side="left")
 entry_encode = tk.Entry(frame_encode, textvariable=encode_image_path)
 entry_encode.pack(side="left", fill="x", expand=True, padx=10)
 
+# Seed encode
+frame_seed_enc = tk.Frame(root)
+frame_seed_enc.pack(fill="x", padx=10, pady=(5, 0))
+tk.Label(frame_seed_enc, text="Graine (mot de passe) :").pack(side="left")
+tk.Entry(frame_seed_enc, textvariable=encode_seed).pack(side="left", fill="x", expand=True, padx=10)
+
+# Message
 label_msg = tk.Label(root, text="Message à cacher :")
 label_msg.pack(anchor="w", padx=10)
 
 text_message = tk.Text(root, height=4)
 text_message.pack(fill="x", padx=10)
+text_message.bind("<KeyRelease>", lambda e: update_encode_infos())
+
+# Infos demandées Q4
+frame_infos = tk.Frame(root)
+frame_infos.pack(fill="x", padx=10, pady=(8, 0))
+
+tk.Label(frame_infos, text="Taille image :").grid(row=0, column=0, sticky="w")
+label_img_size_val = tk.Label(frame_infos, text="-")
+label_img_size_val.grid(row=0, column=1, sticky="w", padx=10)
+
+tk.Label(frame_infos, text="Taille message (bits) :").grid(row=1, column=0, sticky="w")
+label_bits_val = tk.Label(frame_infos, text="-")
+label_bits_val.grid(row=1, column=1, sticky="w", padx=10)
+
+tk.Label(frame_infos, text="Ratio bits / pixels :").grid(row=2, column=0, sticky="w")
+label_ratio_val = tk.Label(frame_infos, text="-")
+label_ratio_val.grid(row=2, column=1, sticky="w", padx=10)
+
+label_conclusion_val = tk.Label(root, text="-")
+label_conclusion_val.pack(anchor="w", padx=10, pady=(3, 0))
 
 btn_cacher = tk.Button(root, text="Cacher le message (générer image encodée)", command=action_cacher_message)
 btn_cacher.pack(pady=10)
 
-
-# Séparateur visuel
-sep = tk.Label(root, text="-" * 80)
-sep.pack(pady=5)
-
+# Séparateur
+sep = tk.Label(root, text="-" * 100)
+sep.pack(pady=6)
 
 # ----------------------------
-# Interface - Partie 3b : Decoder
+# UI - Partie Decode (Q3b)
 # ----------------------------
 label_b = tk.Label(root, text="Extraire un message d'une image", font=("Arial", 12, "bold"))
 label_b.pack(pady=(5, 5))
@@ -146,6 +221,12 @@ btn_choisir_decode.pack(side="left")
 entry_decode = tk.Entry(frame_decode, textvariable=decode_image_path)
 entry_decode.pack(side="left", fill="x", expand=True, padx=10)
 
+# Seed decode
+frame_seed_dec = tk.Frame(root)
+frame_seed_dec.pack(fill="x", padx=10, pady=(5, 0))
+tk.Label(frame_seed_dec, text="Graine (mot de passe) :").pack(side="left")
+tk.Entry(frame_seed_dec, textvariable=decode_seed).pack(side="left", fill="x", expand=True, padx=10)
+
 btn_extraire = tk.Button(root, text="Extraire le message", command=action_extraire_message)
 btn_extraire.pack(pady=10)
 
@@ -155,8 +236,7 @@ label_res.pack(anchor="w", padx=10)
 text_resultat = tk.Text(root, height=6)
 text_resultat.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
+# Initialise les infos
+update_encode_infos()
 
-# ----------------------------
-# Boucle principale Tkinter
-# ----------------------------
-root.mainloop() # Garde la fenêtre ouverte et gère les clics
+root.mainloop()
