@@ -1,17 +1,24 @@
 from PIL import Image
 import random
 
-def generer_points_aleatoires(largeur, hauteur, nb_bits, graine):
+def iter_points_aleatoires(largeur, hauteur, graine):
+    n = largeur * hauteur
     rng = random.Random(graine)
-    indices_possibles = list(range(largeur * hauteur))
-    indices_choisis = rng.sample(indices_possibles, nb_bits)
+    swaps = {}
 
-    points = []
-    for i in indices_choisis:
-        x = i % largeur
-        y = i // largeur
-        points.append((x, y))
-    return points
+    for i in range(n):
+        j = rng.randrange(i, n)
+
+        val_i = swaps.get(i, i)
+        val_j = swaps.get(j, j)
+
+        swaps[i] = val_j
+        swaps[j] = val_i
+
+        idx = swaps[i]
+        x = idx % largeur
+        y = idx // largeur
+        yield (x, y)
 
 def extraire_message(image_path, graine):
     img = Image.open(image_path).convert("RGBA")
@@ -20,11 +27,9 @@ def extraire_message(image_path, graine):
 
     bits_extraits = ""
     message_final = ""
-    marqueur_fin = '1111111111111110' * 4
+    marqueur_fin = '1111111111111110' * 4  # doit être identique à cacher.py
 
-    points = generer_points_aleatoires(width, height, width * height, graine)
-
-    for (x, y) in points:
+    for (x, y) in iter_points_aleatoires(width, height, graine):
         r, g, b, a = pixels[x, y]
         bits_extraits += str(r & 1)
 
