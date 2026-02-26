@@ -1,6 +1,10 @@
 from PIL import Image
 import random
 
+def message_to_bin(message):
+    # Convertit le message en binaire (8 bits par caractère)
+    return ''.join(format(ord(i), '08b') for i in message)
+
 def generer_points_aleatoires(largeur, hauteur, nb_bits, graine):
     random.seed(graine)
     indices_possibles = list(range(largeur * hauteur))
@@ -12,10 +16,6 @@ def generer_points_aleatoires(largeur, hauteur, nb_bits, graine):
         y = i // largeur
         points.append((x, y))
     return points
-
-def message_to_bin(message):
-    # Convertit le message en binaire (8 bits par caractère)
-    return ''.join(format(ord(i), '08b') for i in message)
 
 def cacher_message(image_path, message, output_path, graine):
     # On force l'image en RGBA pour être sûr d'avoir 4 valeurs (r,g,b,a)
@@ -39,9 +39,9 @@ def cacher_message(image_path, message, output_path, graine):
         nouveau_r = (r & ~1) | int(binary_msg[idx])
         pixels[x, y] = (nouveau_r, g, b, a)
 
-        
-        img.save(output_path)
-        print(f"Message caché dans {output_path}")
+    # ✅ IMPORTANT: on sauvegarde UNE SEULE FOIS, après la boucle    
+    img.save(output_path)
+    print(f"Message caché dans {output_path}")
 
 if __name__ == "__main__":
     # Exemple d'utilisation (ne tourne que si on lance cacher.py directement)
