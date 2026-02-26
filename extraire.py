@@ -2,9 +2,9 @@ from PIL import Image
 import random
 
 def generer_points_aleatoires(largeur, hauteur, nb_bits, graine):
-    random.seed(graine)
+    rng = random.Random(graine)
     indices_possibles = list(range(largeur * hauteur))
-    indices_choisis = random.sample(indices_possibles, nb_bits)
+    indices_choisis = rng.sample(indices_possibles, nb_bits)
 
     points = []
     for i in indices_choisis:
@@ -14,16 +14,14 @@ def generer_points_aleatoires(largeur, hauteur, nb_bits, graine):
     return points
 
 def extraire_message(image_path, graine):
-    # On force en RGBA pour être sûr d'avoir 4 valeurs
     img = Image.open(image_path).convert("RGBA")
     pixels = img.load()
     width, height = img.size
-    
+
     bits_extraits = ""
     message_final = ""
-    marqueur_fin = '1111111111111110' * 4 # doit être IDENTIQUE à cacher.py
-    
-    # On génère un parcours aléatoire de TOUS les pixels
+    marqueur_fin = '1111111111111110' * 4
+
     points = generer_points_aleatoires(width, height, width * height, graine)
 
     for (x, y) in points:
@@ -38,9 +36,8 @@ def extraire_message(image_path, graine):
                 message_final += chr(int(octet, 2))
 
             return message_final
-    
+
     return "Aucun marqueur de fin trouvé."
 
 if __name__ == "__main__":
-    # Exemple d'utilisation (ne tourne que si on lance extraire.py directement)
     print(extraire_message("images/image1_codee.png", "mdp123"))
