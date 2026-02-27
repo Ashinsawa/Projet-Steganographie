@@ -10,7 +10,9 @@ from extraire import extraire_message
 # ----------------------------
 root = tk.Tk()
 root.title("Stéganographie - LSB (MNS)")
-root.geometry("700x520")
+root.geometry("750x650")   # plus haut
+root.minsize(700, 600)     # empêche une fenêtre trop petite
+root.resizable(True, True) # autorise le redimensionnement
 
 # ----------------------------
 # Constantes "projet"
@@ -233,8 +235,17 @@ btn_extraire.pack(pady=10)
 label_res = tk.Label(root, text="Message trouvé :")
 label_res.pack(anchor="w", padx=10)
 
-text_resultat = tk.Text(root, height=6)
-text_resultat.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+# Frame pour mettre Text + Scrollbar côte à côte
+frame_result = tk.Frame(root)
+frame_result.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+scroll_y = tk.Scrollbar(frame_result, orient="vertical")
+scroll_y.pack(side="right", fill="y")
+
+text_resultat = tk.Text(frame_result, height=8, yscrollcommand=scroll_y.set)
+text_resultat.pack(side="left", fill="both", expand=True)
+
+scroll_y.config(command=text_resultat.yview)
 
 # Initialise les infos
 update_encode_infos()
