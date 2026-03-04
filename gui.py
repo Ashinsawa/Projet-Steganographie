@@ -5,56 +5,62 @@ from PIL import Image
 from cacher import cacher_message
 from extraire import extraire_message
 
-# ----------------------------
-# Fenêtre principale
-# ----------------------------
+# ------------------------------------------------------------
+# gui.py
+# Interface graphique :
+# - Encodage : sélectionner une image, saisir un message + graine, générer l'image encodée
+# - Décodage : sélectionner une image encodée + graine, extraire le message
+# - Afficher des infos (Question 4) :
+#     * taille de l'image
+#     * taille du message en bits
+#     * ratio (bits à cacher / nb_pixels)
+# ------------------------------------------------------------
+
 root = tk.Tk()
 root.title("Stéganographie - LSB (MNS)")
-root.geometry("750x650")   # plus haut
-root.minsize(700, 600)     # empêche une fenêtre trop petite
+root.geometry("750x650")   # fenêtre plus grande
+root.minsize(700, 600)     # évite une fenêtre trop petite
 root.resizable(True, True) # autorise le redimensionnement
 
-# ----------------------------
-# Constantes "projet"
-# ----------------------------
+# Constantes projet (doivent coller à cacher.py / extraire.py)
 MARQUEUR_FIN = '1111111111111110' * 4  # 64 bits
-SEUIL_RATIO = 0.001  # 0.1% = 0.001 en valeur décimale
+SEUIL_RATIO = 0.001  # 0.1% = 0.001 (en fraction)
 
-# ----------------------------
-# Variables Tkinter
-# ----------------------------
+# Variables Tkinter (stockent des champs liés aux widgets)
 encode_image_path = tk.StringVar()
 decode_image_path = tk.StringVar()
-
 encode_seed = tk.StringVar()
 decode_seed = tk.StringVar()
 
 # ----------------------------
-# Helpers (calculs demandés en Q4)
+# Helpers demandés (Question 4)
 # ----------------------------
 def message_to_bin_len_bits(message: str) -> int:
     """
-    Calcule le nombre de bits à stocker.
-    Hypothèse du prof : 8 bits par caractère + marqueur de fin.
+    Nombre de bits stockés :
+    - 8 bits par caractère
+    - + longueur du marqueur fin (64 bits)
     """
     return len(message) * 8 + len(MARQUEUR_FIN)
 
 def lire_taille_image(path: str):
-    """Retourne (width, height) ou (None, None) si problème."""
+    """Ouvre l'image pour récupérer (width, height)."""
     try:
         img = Image.open(path)
-        return img.size  # (width, height)
+        return img.size
     except Exception:
         return None, None
 
 def update_encode_infos(*args):
     """
-    Met à jour les labels d'infos (taille image, bits, ratio)
-    dès qu'on change l'image ou le message.
+    Met à jour les infos dès que :
+    - on choisit une image
+    - ou on modifie le message
     """
     path = encode_image_path.get()
     msg = text_message.get("1.0", tk.END).strip()
 
+    # Si aucune image, on remet des tirets
     if not path:
         label_img_size_val.config(text="-")
         label_bits_val.config(text="-")
@@ -71,23 +77,28 @@ def update_encode_infos(*args):
         return
 
     total_pixels = width * height
-    nb_bits = message_to_bin_len_bits(msg) if msg else len(MARQUEUR_FIN)  # si message vide: juste marqueur
+
+    # Si pas de message, on compte au minimum le marqueur (ça reste “cachable” mais inutile)
+    nb_bits = message_to_bin_len_bits(msg) if msg else len(MARQUEUR_FIN)
+
     ratio = nb_bits / total_pixels
 
+    # Affichage “humain”
     label_img_size_val.config(text=f"{width} x {height} ({total_pixels} pixels)")
     label_bits_val.config(text=f"{nb_bits} bits")
     label_ratio_val.config(text=f"{ratio:.6f}  (≈ {ratio*100:.4f} %)")
 
+    # Interprétation demandée par l'énoncé
     if ratio < SEUIL_RATIO:
         label_conclusion_val.config(text="✅ Ratio < 0,1% : le bruit naturel devrait masquer le message")
     else:
         label_conclusion_val.config(text="⚠️ Ratio ≥ 0,1% : le message peut être plus détectable")
 
-
 # ----------------------------
-# Actions boutons / sélection fichiers
+# Actions de l'interface
 # ----------------------------
 def choisir_image_a_encoder():
+    """Ouvre un explorateur pour choisir l'image porteuse (PNG conseillé)."""
     path = filedialog.askopenfilename(
         title="Choisir une image (PNG)",
         filetypes=[("Images PNG", "*.png"), ("Tous les fichiers", "*.*")]
@@ -97,6 +108,7 @@ def choisir_image_a_encoder():
         update_encode_infos()
 
 def choisir_image_a_decoder():
+    """Ouvre un explorateur pour choisir l'image à décoder."""
     path = filedialog.askopenfilename(
         title="Choisir une image à décoder (PNG)",
         filetypes=[("Images PNG", "*.png"), ("Tous les fichiers", "*.*")]
@@ -105,10 +117,12 @@ def choisir_image_a_decoder():
         decode_image_path.set(path)
 
 def action_cacher_message():
+    """Bouton encodage : lit les champs, demande un fichier de sortie, appelle cacher_message()."""
     img_path = encode_image_path.get()
     msg = text_message.get("1.0", tk.END).strip()
     seed = encode_seed.get().strip()
 
+    # Vérifications utilisateur
     if not img_path:
         messagebox.showwarning("Attention", "Choisis une image à encoder.")
         return
@@ -119,6 +133,7 @@ def action_cacher_message():
         messagebox.showwarning("Attention", "Tape une graine (mot de passe).")
         return
 
+    # Choix du nom de fichier de sortie
     output_path = filedialog.asksaveasfilename(
         title="Enregistrer l'image encodée",
         defaultextension=".png",
@@ -128,6 +143,7 @@ def action_cacher_message():
     if not output_path:
         return
 
+    # Encodage réel
     try:
         cacher_message(img_path, msg, output_path, seed)
         messagebox.showinfo("OK", f"Message caché dans :\n{output_path}")
@@ -135,6 +151,7 @@ def action_cacher_message():
         messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}")
 
 def action_extraire_message():
+    """Bouton décodage : appelle extraire_message() et affiche le résultat."""
     img_path = decode_image_path.get()
     seed = decode_seed.get().strip()
 
@@ -152,9 +169,8 @@ def action_extraire_message():
     except Exception as e:
         messagebox.showerror("Erreur", f"Une erreur est survenue :\n{e}")
 
-
 # ----------------------------
-# UI - Partie Encode (Q3a + Q4)
+# Construction de l'interface
 # ----------------------------
 label_a = tk.Label(root, text="Cacher un message dans une image", font=("Arial", 12, "bold"))
 label_a.pack(pady=(10, 5))
@@ -168,21 +184,23 @@ btn_choisir_encode.pack(side="left")
 entry_encode = tk.Entry(frame_encode, textvariable=encode_image_path)
 entry_encode.pack(side="left", fill="x", expand=True, padx=10)
 
-# Seed encode
+# Champ graine (encodage)
 frame_seed_enc = tk.Frame(root)
 frame_seed_enc.pack(fill="x", padx=10, pady=(5, 0))
 tk.Label(frame_seed_enc, text="Graine (mot de passe) :").pack(side="left")
 tk.Entry(frame_seed_enc, textvariable=encode_seed).pack(side="left", fill="x", expand=True, padx=10)
 
-# Message
+# Zone message
 label_msg = tk.Label(root, text="Message à cacher :")
 label_msg.pack(anchor="w", padx=10)
 
 text_message = tk.Text(root, height=4)
 text_message.pack(fill="x", padx=10)
+
+# À chaque frappe, on recalcule les infos
 text_message.bind("<KeyRelease>", lambda e: update_encode_infos())
 
-# Infos demandées Q4
+# Infos Q4
 frame_infos = tk.Frame(root)
 frame_infos.pack(fill="x", padx=10, pady=(8, 0))
 
@@ -204,13 +222,11 @@ label_conclusion_val.pack(anchor="w", padx=10, pady=(3, 0))
 btn_cacher = tk.Button(root, text="Cacher le message (générer image encodée)", command=action_cacher_message)
 btn_cacher.pack(pady=10)
 
-# Séparateur
+# Séparateur visuel
 sep = tk.Label(root, text="-" * 100)
 sep.pack(pady=6)
 
-# ----------------------------
-# UI - Partie Decode (Q3b)
-# ----------------------------
+# Partie décodage
 label_b = tk.Label(root, text="Extraire un message d'une image", font=("Arial", 12, "bold"))
 label_b.pack(pady=(5, 5))
 
@@ -223,7 +239,7 @@ btn_choisir_decode.pack(side="left")
 entry_decode = tk.Entry(frame_decode, textvariable=decode_image_path)
 entry_decode.pack(side="left", fill="x", expand=True, padx=10)
 
-# Seed decode
+# Champ graine (décodage)
 frame_seed_dec = tk.Frame(root)
 frame_seed_dec.pack(fill="x", padx=10, pady=(5, 0))
 tk.Label(frame_seed_dec, text="Graine (mot de passe) :").pack(side="left")
@@ -235,7 +251,7 @@ btn_extraire.pack(pady=10)
 label_res = tk.Label(root, text="Message trouvé :")
 label_res.pack(anchor="w", padx=10)
 
-# Frame pour mettre Text + Scrollbar côte à côte
+# Zone résultat + scrollbar (pour ne pas “perdre” la zone en bas)
 frame_result = tk.Frame(root)
 frame_result.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -247,7 +263,7 @@ text_resultat.pack(side="left", fill="both", expand=True)
 
 scroll_y.config(command=text_resultat.yview)
 
-# Initialise les infos
+# Initialisation des infos au lancement
 update_encode_infos()
 
 root.mainloop()

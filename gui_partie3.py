@@ -4,43 +4,67 @@ from PIL import Image
 
 from steg_image_nb import cacher_image_nb, extraire_image_nb, image_nb_to_bits
 
+# ------------------------------------------------------------
+# gui_partie3.py
+# Interface pour la Partie 3 :
+# - Encodage : choisir image porteuse + image N&B + graine -> générer image encodée
+# - Décodage : choisir image encodée + graine -> extraire l'image N&B
+# - Affiche infos utiles : capacité, bits à cacher, ratio
+# ------------------------------------------------------------
+
 root = tk.Tk()
 root.title("Partie 3 - Cacher une image N&B")
 root.geometry("750x520")
 root.minsize(700, 500)
 
-host_path = tk.StringVar()
-secret_path = tk.StringVar()
-seed_var = tk.StringVar()
+# Variables Tkinter (chemins / seeds)
+host_path = tk.StringVar()         # image porteuse
+secret_path = tk.StringVar()       # image à cacher (logo)
+seed_var = tk.StringVar()          # graine encodage
 
-decode_host_path = tk.StringVar()
-decode_seed_var = tk.StringVar()
+decode_host_path = tk.StringVar()  # image encodée
+decode_seed_var = tk.StringVar()   # graine décodage
 
 info_var = tk.StringVar(value="Sélectionne une image porteuse + une image N&B + une graine.")
 
 def choisir_host():
-    p = filedialog.askopenfilename(title="Choisir image porteuse", filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")])
+    """Choisir l'image porteuse."""
+    p = filedialog.askopenfilename(
+        title="Choisir image porteuse",
+        filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")]
+    )
     if p:
         host_path.set(p)
         update_infos()
 
 def choisir_secret():
-    p = filedialog.askopenfilename(title="Choisir image N&B (logo)", filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")])
+    """Choisir l'image à cacher (logo N&B)."""
+    p = filedialog.askopenfilename(
+        title="Choisir image N&B (logo)",
+        filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")]
+    )
     if p:
         secret_path.set(p)
         update_infos()
 
 def update_infos():
+    """
+    Affiche :
+    - taille image porteuse (capacité = W*H bits car 1 bit/pixel)
+    - taille image cachée (w*h bits)
+    - total bits = 16 (header) + w*h
+    - ratio = total / capacité
+    """
     try:
         if not host_path.get() or not secret_path.get():
             return
 
         host = Image.open(host_path.get())
         W, H = host.size
-        cap = W * H  # 1 bit/pixel
+        cap = W * H  # capacité en bits (1 bit/pixel)
 
         w, h, bits = image_nb_to_bits(secret_path.get())
-        total_bits = 16 + (w * h)
+        total_bits = 16 + (w * h)  # 16 bits header + bits pixels
         ratio = total_bits / cap
 
         info_var.set(
@@ -53,6 +77,7 @@ def update_infos():
         info_var.set(f"Erreur infos: {e}")
 
 def action_cacher():
+    """Bouton encodage : appelle cacher_image_nb()."""
     if not host_path.get() or not secret_path.get():
         messagebox.showwarning("Attention", "Choisis l'image porteuse ET l'image à cacher.")
         return
@@ -76,11 +101,16 @@ def action_cacher():
         messagebox.showerror("Erreur", str(e))
 
 def choisir_decode_host():
-    p = filedialog.askopenfilename(title="Choisir image encodée", filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")])
+    """Choisir l'image déjà encodée à décoder."""
+    p = filedialog.askopenfilename(
+        title="Choisir image encodée",
+        filetypes=[("PNG", "*.png"), ("Tous fichiers", "*.*")]
+    )
     if p:
         decode_host_path.set(p)
 
 def action_extraire():
+    """Bouton décodage : appelle extraire_image_nb()."""
     if not decode_host_path.get():
         messagebox.showwarning("Attention", "Choisis une image encodée à décoder.")
         return
@@ -103,8 +133,8 @@ def action_extraire():
     except Exception as e:
         messagebox.showerror("Erreur", str(e))
 
-
 # -------- UI --------
+
 tk.Label(root, text="ENCODAGE : cacher une image N&B dans une image", font=("Arial", 12, "bold")).pack(pady=(10, 5))
 
 f1 = tk.Frame(root); f1.pack(fill="x", padx=10)
